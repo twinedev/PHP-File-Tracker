@@ -26,60 +26,61 @@ function __get_file_lists__() {
 					$data['files'] = [];
 				}
 			}
-		}
 
-		// Get the entry point file. The IF block is for if it is called
-		// via command line, or via cron
-		$from   = 'web';
-		$script = $_SERVER['SCRIPT_FILENAME'];
-		if ( array_key_exists( 'PWD', $_SERVER ) ) {
-			$from   = 'cli';
-			$script = $_SERVER['PWD'] . DIRECTORY_SEPARATOR . $script;
-		}
+			// Get the entry point file. The IF block is for if it is called
+			// via command line, or via cron
+			$from   = 'web';
+			$script = $_SERVER['SCRIPT_FILENAME'];
+			if ( array_key_exists( 'PWD', $_SERVER ) ) {
+				$from   = 'cli';
+				$script = $_SERVER['PWD'] . DIRECTORY_SEPARATOR . $script;
+			}
 
-		// Don't run if we are calling the script to view the data
-		if ( substr( $script, - 16 ) != '/__view_list.php' ) {
+			// Don't run if we are calling the script to view the data
+			if ( substr( $script, - 16 ) != '/__view_list.php' ) {
 
-			// Add the entry point file to the list
-			if ( ! array_key_exists( $script, $data['entry'] ) ) {
+				// Add the entry point file to the list
+				if ( ! array_key_exists( $script, $data['entry'] ) ) {
+					if ( __PER_ENTRY_POINT ) {
+						// Set up to list "from"s (CLI or WEB, can be both so use an array)
+						$data['entry'][ $script ] = [
+							'from'  => [],
+							'files' => []
+						];
+					} else {
+						// Just add the name to the list
+						$data['entry'][] = $script;
+					}
+				}
 				if ( __PER_ENTRY_POINT ) {
-					// Set up to list "from"s (CLI or WEB, can be both so use an array)
-					$data['entry'][ $script ] = [
-						'from'  => [],
-						'files' => []
-					];
-				} else {
-					// Just add the name to the list
-					$data['entry'][] = $script;
+					// add "from" in case different from existing
+					if ( ! in_array( $from, $data['entry'][ $script ]['from'] ) ) {
+						$data['entry'][ $script ]['from'][] = $from;
+					}
 				}
-			}
-			if ( __PER_ENTRY_POINT ) {
-				// add "from" in case different from existing
-				if ( ! in_array( $from, $data['entry'][ $script ]['from'] ) ) {
-					$data['entry'][ $script ]['from'][] = $from;
-				}
-			}
 
-			// Add the files used to the global file list
-			$files = get_included_files();
-			foreach ( $files as $file ) {
-				if ( ! in_array( $file, $data['files'] ) ) {
-					$data['files'][] = $file;
+				// Add the files used to the global file list
+				$files = get_included_files();
+				foreach ( $files as $file ) {
+					if ( ! in_array( $file, $data['files'] ) ) {
+						$data['files'][] = $file;
+					}
+					if ( __PER_ENTRY_POINT && ! in_array( $file, $data['entry'][ $script ]['files'] ) ) {
+						$data['entry'][ $script ]['files'][] = $file;
+					}
 				}
-				if ( __PER_ENTRY_POINT && ! in_array( $file, $data['entry'][ $script ]['files'] ) ) {
-					$data['entry'][ $script ]['files'][] = $file;
-				}
-			}
 
-			// All done, sort them and save the data
-			sort( $data['files'] );
-			if ( __PER_ENTRY_POINT ) {
-				if ( ! in_array( $from, $data['entry'][ $script ]['from'] ) ) {
-					$data['entry'][ $script ]['from'][] = $from;
+				// All done, sort them and save the data
+				sort( $data['files'] );
+				if ( __PER_ENTRY_POINT ) {
+					if ( ! in_array( $from, $data['entry'][ $script ]['from'] ) ) {
+						$data['entry'][ $script ]['from'][] = $from;
+					}
+					sort( $data['entry'][ $script ]['files'] );
 				}
-				sort( $data['entry'][ $script ]['files'] );
+				file_put_contents( __FILE_LIST_JSON, json_encode( $data ) );
+
 			}
-			file_put_contents( __FILE_LIST_JSON, json_encode( $data ) );
 
 		}
 
